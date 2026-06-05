@@ -14,19 +14,22 @@ Here is the comparison:
 The core requirement of this challenge was to compute risk sensitivities analytically (without numerical bumping). 
 
 ### Curve Bootstrapping (Implicit Function Theorem)
-For any market instrument $k$ with maturity $T_k$, the pricing parity equation must equal zero:
-$$ F(\text{quotes}, \text{DiscountFactors}) = PV_{float} - PV_{fixed} = 0 $$
+For any market instrument k with maturity T_k, the pricing parity equation must equal zero:
+F(quotes, DiscountFactors) = PV_float - PV_fixed = 0
 
-For Cash ($T \le 180$), the relationship is linear: $DF(T) = \frac{1}{1 + c \tau}$.
-For Swaps ($T > 180$), the intermediate cashflows require interpolation, creating a non-linear dependency on $DF(T_k)$. We use a 1D **Newton-Raphson Solver** to iteratively find $\ln DF(T_k)$.
+For Cash (T <= 180), the relationship is linear: DF(T) = 1 / (1 + c * tau).
+For Swaps (T > 180), the intermediate cashflows require interpolation, creating a non-linear dependency on DF(T_k). We use a 1D **Newton-Raphson Solver** to iteratively find ln(DF(T_k)).
 
-To obtain the exact risk matrix (Jacobian) $\frac{\partial DF_k}{\partial q_j}$, we differentiate the parity equation $F=0$ with respect to the market quote $q_j$ using the **Implicit Function Theorem (IFT)**:
-$$ \frac{\partial F}{\partial DF_k} \frac{\partial DF_k}{\partial q_j} + \sum_{l=0}^{k-1} \frac{\partial F}{\partial DF_l} \frac{\partial DF_l}{\partial q_j} + \frac{\partial F}{\partial q_j} = 0 $$
-By keeping track of $\frac{\partial DF_l}{\partial q_j}$ for all previously bootstrapped nodes $l < k$, we can sequentially solve for the current node's derivatives $\frac{\partial DF_k}{\partial q_j}$ via forward substitution.
+To obtain the exact risk matrix (Jacobian) ∂DF_k / ∂q_j, we differentiate the parity equation F = 0 with respect to the market quote q_j using the **Implicit Function Theorem (IFT)**:
+
+[∂F / ∂DF_k] * [∂DF_k / ∂q_j]  +  SUM_{l=0 to k-1} ( [∂F / ∂DF_l] * [∂DF_l / ∂q_j] )  +  [∂F / ∂q_j] = 0
+
+By keeping track of [∂DF_l / ∂q_j] for all previously bootstrapped nodes l < k, we can sequentially solve for the current node's derivatives [∂DF_k / ∂q_j] via forward substitution.
 
 ### Pricing and Risk Engine
 Once the full Jacobian is constructed, the PV of the new 25Y swap is computed. The exact 1bp Risk Sensitivity is then extracted via the Chain Rule:
-$$ Risk_j = \left( \sum_{k} \frac{\partial PV}{\partial DF_k} \frac{\partial DF_k}{\partial q_j} \right) \times 0.0001 $$
+
+Risk_j = SUM_k ( [∂PV / ∂DF_k] * [∂DF_k / ∂q_j] ) * 0.0001
 
 ---
 
